@@ -1,0 +1,48 @@
+services:
+  postgres-shipping:
+    image: postgres:17.5
+    container_name: postgres-shipping
+    restart: always
+    environment:
+      POSTGRES_DB: shipping
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - shipping_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shipping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - loyalty-network
+
+  shipping-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eventia-shipping
+    restart: always
+    depends_on:
+      postgres-shipping:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - loyalty-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  shipping_data:
+
+networks:
+  loyalty-network:
+    external: true
+    name: eventia-loyalty_loyalty-network
